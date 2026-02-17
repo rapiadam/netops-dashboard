@@ -6,12 +6,14 @@ from .services import ServiceChecker
 
 class HealthView(View):
     """Docker HEALTHCHECK + load balancer endpoint"""
+
     def get(self, request):
         return JsonResponse({'status': 'ok', 'service': 'netops-dashboard'})
 
 
 class DashboardAPIView(View):
     """Dashboard data"""
+
     def get(self, request):
         services = ServiceTarget.objects.all()
         return JsonResponse({
