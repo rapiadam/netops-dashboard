@@ -23,9 +23,9 @@
 
   roles:
     - role: django_app
-      tags: ['django', 'app']
+      tags: ["django", "app"]
     - role: monitoring
-      tags: ['monitoring', 'grafana']
+      tags: ["monitoring", "grafana"]
 
   post_tasks:
     - name: Final health checks
