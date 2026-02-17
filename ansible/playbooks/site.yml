@@ -13,7 +13,10 @@
   pre_tasks:
     - name: Show deployment info
       ansible.builtin.debug:
-        msg: "Deploying on {{ ansible_os_family }} ({{ ansible_architecture }})"
+        msg: >-
+          Deploying on
+          {{ ansible_facts['os_family'] }}
+          ({{ ansible_facts['architecture'] }})
 
     - name: Verify Docker is running
       ansible.builtin.command: docker info
