@@ -1,0 +1,39 @@
+---
+# ============================================================
+#   ansible-playbook -i ../inventory/hosts.yml site.yml
+#   ansible-playbook -i ../inventory/hosts.yml site.yml --check --diff
+#   ansible-playbook -i ../inventory/hosts.yml site.yml --tags monitoring
+#   ansible-playbook -i ../inventory/hosts.yml site.yml --ask-vault-pass
+# ============================================================
+
+- name: Deploy NetOps Dashboard
+  hosts: local
+  gather_facts: true
+
+  pre_tasks:
+    - name: Show deployment info
+      ansible.builtin.debug:
+        msg: "Deploying on {{ ansible_os_family }} ({{ ansible_architecture }})"
+
+    - name: Verify Docker is running
+      ansible.builtin.command: docker info
+      changed_when: false
+      failed_when: docker_check.rc != 0
+      register: docker_check
+
+  roles:
+    - role: django_app
+      tags: ['django', 'app']
+    - role: monitoring
+      tags: ['monitoring', 'grafana']
+
+  post_tasks:
+    - name: Final health checks
+      ansible.builtin.uri:
+        url: "http://localhost:{{ item.port }}/{{ item.path }}"
+        status_code: 200
+      loop:
+        - { port: 9090, path: "-/healthy" }
+        - { port: 3000, path: "api/health" }
+      loop_control:
+        label: "port {{ item.port }}"

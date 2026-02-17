@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target'
+        required: true
+        type: choice
+        options: [staging, production]
+      dry_run:
+        description: 'Dry run only'
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible
+        run: pip install ansible && ansible-galaxy collection install community.docker
+
+      - name: Deploy
+        run: |
+          FLAGS=""
+          [ "${{ inputs.dry_run }}" = "true" ] && FLAGS="--check --diff"
+          ansible-playbook ansible/playbooks/site.yml -i ansible/inventory/hosts.yml $FLAGS

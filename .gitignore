@@ -1,0 +1,8 @@
+venv/
+*.pyc
+__pycache__/
+.env
+*.tfstate*
+.terraform/
+db.sqlite3
+

@@ -1,0 +1,28 @@
+---
+- name: Wait for Grafana API
+  ansible.builtin.uri:
+    url: "http://localhost:3000/api/health"
+    status_code: 200
+  register: grafana_health
+  until: grafana_health.status == 200
+  retries: 10
+  delay: 5
+
+- name: Add Prometheus as Grafana datasource
+  ansible.builtin.uri:
+    url: "http://localhost:3000/api/datasources"
+    method: POST
+    body_format: json
+    body: "{{ lookup('template', 'grafana_datasource.json.j2') }}"
+    headers:
+      Content-Type: "application/json"
+    url_username: admin
+    url_password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200, 409]
+
+- name: Show monitoring URLs
+  ansible.builtin.debug:
+    msg: |
+      Prometheus: http://localhost:9090
+      Grafana:    http://localhost:3000 (admin / {{ grafana_admin_password }})

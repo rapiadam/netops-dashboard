@@ -1,0 +1,8 @@
+---
+
+- name: rebuild django container
+  community.docker.docker_container:
+    name: "{{ project_name }}_django"
+    image: "{{ project_name }}_django:latest"
+    state: started
+    restart: true

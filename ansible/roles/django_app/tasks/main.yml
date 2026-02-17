@@ -1,0 +1,77 @@
+---
+
+- name: Ensure app directory exists
+  ansible.builtin.file:
+    path: "{{ django_app_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Generate .env from template
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ django_app_dir }}/.env"
+    mode: '0600'
+  notify: rebuild django container
+
+- name: Generate Dockerfile from template
+  ansible.builtin.template:
+    src: Dockerfile.j2
+    dest: "{{ django_app_dir }}/Dockerfile"
+    mode: '0644'
+  notify: rebuild django container
+
+- name: Check if requirements.txt exists
+  ansible.builtin.stat:
+    path: "{{ django_app_dir }}/requirements.txt"
+  register: req_file
+
+- name: Build Django Docker image
+  community.docker.docker_image:
+    name: "{{ project_name }}_django"
+    tag: latest
+    source: build
+    build:
+      path: "{{ django_app_dir }}"
+      platform: linux/arm64
+    state: present
+    force_source: true
+  when: req_file.stat.exists
+  register: django_build
+
+- name: Run Django container
+  community.docker.docker_container:
+    name: "{{ project_name }}_django"
+    image: "{{ project_name }}_django:latest"
+    state: started
+    restart_policy: unless-stopped
+    recreate: "{{ django_build.changed | default(false) }}"
+    ports:
+      - "{{ django_port }}:{{ django_port }}"
+    networks:
+      - name: "{{ project_name }}_network"
+    env_file: "{{ django_app_dir }}/.env"
+  when: req_file.stat.exists
+
+- name: Ensure superuser exists
+  community.docker.docker_container_exec:
+    container: "{{ project_name }}_django"
+    command: python manage.py ensure_superuser
+  register: superuser_result
+  changed_when: "'created' in superuser_result.stdout"
+  when: req_file.stat.exists
+
+- name: Wait for Django health endpoint
+  ansible.builtin.uri:
+    url: "http://localhost:{{ django_port }}/health/"
+    status_code: 200
+  register: health_check
+  until: health_check.status == 200
+  retries: 12
+  delay: 5
+  when: req_file.stat.exists
+
+- name: Show Django status
+  ansible.builtin.debug:
+    msg: >
+      Django is running at http://localhost:{{ django_port }}
+      Health: {{ health_check.status | default('skipped') }}

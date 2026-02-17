@@ -1,0 +1,19 @@
+---
+django_app_dir: "{{ playbook_dir }}/../../django_app"
+django_port: 8000
+django_secret_key: "dev-secret-key-change-in-prod"
+django_debug: true
+django_allowed_hosts: "*"
+monitored_services:
+  - name: "Google"
+    url: "https://google.com"
+    check_interval: 60
+  - name: "GitHub"
+    url: "https://github.com"
+    check_interval: 60
+  - name: "Python.org"
+    url: "https://python.org"
+    check_interval: 120
+django_superuser_username: "admin"
+django_superuser_email: "admin@netops.local"
+django_superuser_password: "admin"
