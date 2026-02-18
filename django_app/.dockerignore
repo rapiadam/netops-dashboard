@@ -1,0 +1,24 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+db.sqlite3
+.git/
+.gitignore
+staticfiles/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+pytest.ini
+requirements-dev.txt
+tests.py
+
+# IDE
+.idea/
+.vscode/
+
+# Docs
+*.md

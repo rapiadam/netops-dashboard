@@ -1,0 +1,77 @@
+groups:
+  - name: netops_alerts
+    rules:
+      - alert: ServiceDown
+        expr: netops_services_down > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Monitored service(s) are down"
+          description: >-
+            {{ $value }} service(s) are currently
+            unreachable.
+
+      - alert: HighResponseTime
+        expr: >-
+          histogram_quantile(0.95,
+          rate(netops_service_response_time_seconds_bucket[5m]))
+          > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High service response time"
+          description: >-
+            95th percentile response time is above
+            2 seconds.
+
+      - alert: DjangoDown
+        expr: up{job="django"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Django application is down"
+          description: >-
+            The Django application is not responding
+            to Prometheus scrapes.
+
+      - alert: HighCPUUsage
+        expr: >-
+          100 - (avg by(instance)
+          (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+          * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: >-
+            CPU usage is above 80% for more than
+            5 minutes.
+
+      - alert: HighMemoryUsage
+        expr: >-
+          (1 - node_memory_MemAvailable_bytes
+          / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: >-
+            Memory usage is above 85% for more than
+            5 minutes.
+
+      - alert: DiskSpaceLow
+        expr: >-
+          (1 - node_filesystem_avail_bytes{fstype!="tmpfs"}
+          / node_filesystem_size_bytes{fstype!="tmpfs"})
+          * 100 > 90
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space is running low"
+          description: "Disk usage is above 90%."
