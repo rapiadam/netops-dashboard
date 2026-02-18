@@ -24,8 +24,15 @@ jobs:
         run: pip install ansible && ansible-galaxy collection install community.docker
 
       - name: Write vault password
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/.vault_pass
-        shell: bash
+        run: |
+          if [ -z "$VAULT_PASS" ]; then
+            echo "::error::ANSIBLE_VAULT_PASSWORD secret is not set. Go to Settings > Secrets > Actions and add it."
+            exit 1
+          fi
+          echo "$VAULT_PASS" > /tmp/.vault_pass
+          chmod 600 /tmp/.vault_pass
+        env:
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
       - name: Deploy
         run: |
