@@ -1,8 +1,41 @@
+# Python
 venv/
 *.pyc
+*.pyo
 __pycache__/
+*.egg-info/
+dist/
+build/
+
+# Django
 .env
+db.sqlite3
+staticfiles/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Terraform
 *.tfstate*
 .terraform/
-db.sqlite3
+.terraform.lock.hcl
+terraform.tfvars
+crash.log
 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ansible
+*.retry
+
+# Logs
+*.log

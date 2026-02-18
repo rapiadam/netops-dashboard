@@ -1,6 +1,12 @@
+import logging
 import time
+
 import requests
+from django.db import transaction
+
 from .models import ServiceTarget, CheckResult
+
+logger = logging.getLogger('monitor')
 
 
 class ServiceChecker:
@@ -31,16 +37,18 @@ class ServiceChecker:
 
         elapsed_ms = (time.time() - start) * 1000
 
-        result = CheckResult.objects.create(
-            service=target,
-            status=status,
-            response_time_ms=round(elapsed_ms, 2),
-            status_code=status_code,
-            error_message=error,
-        )
+        with transaction.atomic():
+            result = CheckResult.objects.create(
+                service=target,
+                status=status,
+                response_time_ms=round(elapsed_ms, 2),
+                status_code=status_code,
+                error_message=error,
+            )
+            target.status = status
+            target.save(update_fields=['status', 'updated_at'])
 
-        target.status = status
-        target.save(update_fields=['status', 'updated_at'])
+        logger.info("Checked %s: %s (%.0fms)", target.name, status, elapsed_ms)
         return result
 
     def check_all_active(self) -> list[CheckResult]:

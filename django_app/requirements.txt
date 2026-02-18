@@ -11,3 +11,4 @@ prometheus_client==0.24.1
 requests==2.32.5
 sqlparse==0.5.5
 urllib3==2.6.3
+psycopg[binary]==3.2.6

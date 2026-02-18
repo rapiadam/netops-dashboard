@@ -19,11 +19,23 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Ansible
         run: pip install ansible && ansible-galaxy collection install community.docker
+
+      - name: Write vault password
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/.vault_pass
+        shell: bash
 
       - name: Deploy
         run: |
           FLAGS=""
           [ "${{ inputs.dry_run }}" = "true" ] && FLAGS="--check --diff"
-          ansible-playbook ansible/playbooks/site.yml -i ansible/inventory/hosts.yml $FLAGS
+          ansible-playbook ansible/playbooks/site.yml \
+            -i ansible/inventory/hosts.yml \
+            --vault-password-file /tmp/.vault_pass \
+            $FLAGS
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/.vault_pass

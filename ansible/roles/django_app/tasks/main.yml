@@ -32,9 +32,10 @@
     source: build
     build:
       path: "{{ django_app_dir }}"
-      platform: linux/arm64
+      platform: >-
+        linux/{{ ansible_facts['architecture']
+        | replace('x86_64', 'amd64') }}
     state: present
-    force_source: true
   when: req_file.stat.exists
   register: django_build
 
@@ -50,6 +51,14 @@
     networks:
       - name: "{{ project_name }}_network"
     env_file: "{{ django_app_dir }}/.env"
+  when: req_file.stat.exists
+
+- name: Run database migrations
+  community.docker.docker_container_exec:
+    container: "{{ project_name }}_django"
+    command: python manage.py migrate --noinput
+  register: migrate_result
+  changed_when: "'Applying' in migrate_result.stdout"
   when: req_file.stat.exists
 
 - name: Ensure superuser exists

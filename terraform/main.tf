@@ -7,39 +7,29 @@ terraform {
   }
 }
 
-provider "docker" {
-  # macOS Docker Desktop – default unix socket
-  # Linux: unix:///var/run/docker.sock
-  # Windows: npipe:////.//pipe//docker_engine
-}
+provider "docker" {}
 
-# ---- variables ----
-
-variable "project_name" {
-  description = "Projekt prefix"
-  type        = string
-  default     = "netops"
-}
-
-variable "prometheus_port" {
-  type    = number
-  default = 9090
-}
-
-variable "grafana_port" {
-  type    = number
-  default = 3000
-}
-
-variable "grafana_admin_password" {
-  type      = string
-  default   = "netops123"
-  sensitive = true
-}
+# ---- Network ----
 
 resource "docker_network" "netops" {
   name = "${var.project_name}_network"
 }
+
+# ---- Volumes (persistent storage) ----
+
+resource "docker_volume" "prometheus_data" {
+  name = "${var.project_name}_prometheus_data"
+}
+
+resource "docker_volume" "grafana_data" {
+  name = "${var.project_name}_grafana_data"
+}
+
+resource "docker_volume" "postgres_data" {
+  name = "${var.project_name}_postgres_data"
+}
+
+# ---- Images ----
 
 resource "docker_image" "prometheus" {
   name         = "prom/prometheus:v2.51.0"
@@ -56,6 +46,49 @@ resource "docker_image" "node_exporter" {
   keep_locally = true
 }
 
+resource "docker_image" "postgres" {
+  name         = "postgres:16-alpine"
+  keep_locally = true
+}
+
+# ---- PostgreSQL ----
+
+resource "docker_container" "postgres" {
+  name  = "${var.project_name}_postgres"
+  image = docker_image.postgres.image_id
+
+  ports {
+    internal = 5432
+    external = var.postgres_port
+  }
+
+  networks_advanced {
+    name = docker_network.netops.id
+  }
+
+  env = [
+    "POSTGRES_DB=${var.postgres_db}",
+    "POSTGRES_USER=netops",
+    "POSTGRES_PASSWORD=${var.postgres_password}",
+  ]
+
+  volumes {
+    volume_name    = docker_volume.postgres_data.name
+    container_path = "/var/lib/postgresql/data"
+  }
+
+  restart = "unless-stopped"
+
+  healthcheck {
+    test     = ["CMD-SHELL", "pg_isready -U netops -d ${var.postgres_db}"]
+    interval = "10s"
+    timeout  = "5s"
+    retries  = 5
+  }
+}
+
+# ---- Prometheus ----
+
 resource "docker_container" "prometheus" {
   name  = "${var.project_name}_prometheus"
   image = docker_image.prometheus.image_id
@@ -68,15 +101,22 @@ resource "docker_container" "prometheus" {
   networks_advanced {
     name = docker_network.netops.id
   }
-  
+
   volumes {
     host_path      = abspath("${path.module}/../monitoring/prometheus.yml")
     container_path = "/etc/prometheus/prometheus.yml"
     read_only      = true
   }
 
+  volumes {
+    volume_name    = docker_volume.prometheus_data.name
+    container_path = "/prometheus"
+  }
+
   restart = "unless-stopped"
 }
+
+# ---- Grafana ----
 
 resource "docker_container" "grafana" {
   name  = "${var.project_name}_grafana"
@@ -96,8 +136,15 @@ resource "docker_container" "grafana" {
     "GF_USERS_ALLOW_SIGN_UP=false",
   ]
 
+  volumes {
+    volume_name    = docker_volume.grafana_data.name
+    container_path = "/var/lib/grafana"
+  }
+
   restart = "unless-stopped"
 }
+
+# ---- Node Exporter ----
 
 resource "docker_container" "node_exporter" {
   name  = "${var.project_name}_node_exporter"
@@ -113,21 +160,4 @@ resource "docker_container" "node_exporter" {
   }
 
   restart = "unless-stopped"
-}
-
-output "prometheus_url" {
-  value = "http://localhost:${var.prometheus_port}"
-}
-
-output "grafana_url" {
-  value = "http://localhost:${var.grafana_port}"
-}
-
-output "grafana_credentials" {
-  value     = "admin / ${var.grafana_admin_password}"
-  sensitive = true
-}
-
-output "network_name" {
-  value = docker_network.netops.name
 }

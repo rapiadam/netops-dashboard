@@ -11,6 +11,11 @@
   gather_facts: true
 
   pre_tasks:
+    - name: Load vault secrets
+      ansible.builtin.include_vars:
+        file: ../vault/secrets.yml
+      no_log: true
+
     - name: Show deployment info
       ansible.builtin.debug:
         msg: >-
